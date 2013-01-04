@@ -1,0 +1,15 @@
+Declare as following in /etc/cinder/api-paste.conf:
+
+[filter:oboe]
+paste.filter_factory = cinder.contrib.oboe:CinderOboeMiddleware.factory
+
+Then use in all pipelines:
+
+[composite:openstack_volume_api_v1]
+use = call:cinder.api.auth:pipeline_factory
+noauth = oboe faultwrap sizelimit noauth osapi_volume_app_v1
+keystone = oboe faultwrap sizelimit authtoken keystonecontext osapi_volume_app_v1
+keystone_nolimit = oboe faultwrap sizelimit authtoken keystonecontext osapi_volume_app_v1
+
+[pipeline:osvolumeversions]
+pipeline = oboe faultwrap osvolumeversionapp
