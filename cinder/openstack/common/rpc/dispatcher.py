@@ -82,7 +82,10 @@ minimum version that supports the new parameter should be specified.
 """
 
 from cinder.openstack.common.rpc import common as rpc_common
+import oboe
 
+oboe.config['tracing_mode'] = 'always'
+oboe.config['sample_rate'] = 1.0
 
 class RpcDispatcher(object):
     """Dispatch rpc messages according to the requested API version.
@@ -131,20 +134,28 @@ class RpcDispatcher(object):
         if not version:
             version = '1.0'
 
-        had_compatible = False
-        for proxyobj in self.callbacks:
-            if hasattr(proxyobj, 'RPC_API_VERSION'):
-                rpc_api_version = proxyobj.RPC_API_VERSION
-            else:
-                rpc_api_version = '1.0'
-            is_compatible = self._is_compatible(rpc_api_version, version)
-            had_compatible = had_compatible or is_compatible
-            if not hasattr(proxyobj, method):
-                continue
-            if is_compatible:
-                return getattr(proxyobj, method)(ctxt, **kwargs)
 
-        if had_compatible:
-            raise AttributeError("No such RPC function '%s'" % method)
-        else:
-            raise rpc_common.UnsupportedRpcVersion(version=version)
+        oboe.start_trace('cinder', keys={'HTTP-Host': 'RPC', 'URL': str(method)})
+        try:
+            had_compatible = False
+            for proxyobj in self.callbacks:
+                if hasattr(proxyobj, 'RPC_API_VERSION'):
+                    rpc_api_version = proxyobj.RPC_API_VERSION
+                else:
+                    rpc_api_version = '1.0'
+                is_compatible = self._is_compatible(rpc_api_version, version)
+                had_compatible = had_compatible or is_compatible
+                if not hasattr(proxyobj, method):
+                    continue
+                if is_compatible:
+                    return getattr(proxyobj, method)(ctxt, **kwargs)
+
+            if had_compatible:
+                raise AttributeError("No such RPC function '%s'" % method)
+            else:
+                raise rpc_common.UnsupportedRpcVersion(version=version)
+        except Exception, e:
+            oboe.Context.log_exception()
+            raise
+        finally:
+            oboe.end_trace('cinder')

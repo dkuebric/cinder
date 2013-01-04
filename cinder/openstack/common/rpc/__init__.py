@@ -68,7 +68,15 @@ rpc_opts = [
 
 cfg.CONF.register_opts(rpc_opts)
 
+import oboe
 
+def get_params(func, f_args, f_kwargs, ret):
+    return {'RemoteAction': f_args[2]['method'],
+            'RemoteController': 'RPC',
+            'RemoteProtocol': 'RPC',
+            'IsService': True}
+
+@oboe.Context.log_method('rpc', store_backtrace=True, entry_kvs={'Method': 'create_connection'})
 def create_connection(new=True):
     """Create a connection to the message bus used for rpc.
 
@@ -85,6 +93,7 @@ def create_connection(new=True):
     return _get_impl().create_connection(cfg.CONF, new=new)
 
 
+@oboe.Context.log_method('rpc', store_backtrace=True, entry_kvs={'Method': 'call'}, callback=get_params)
 def call(context, topic, msg, timeout=None):
     """Invoke a remote method that returns something.
 
@@ -108,6 +117,7 @@ def call(context, topic, msg, timeout=None):
     return _get_impl().call(cfg.CONF, context, topic, msg, timeout)
 
 
+@oboe.Context.log_method('rpc', store_backtrace=True, entry_kvs={'Method': 'cast'}, callback=get_params)
 def cast(context, topic, msg):
     """Invoke a remote method that does not return anything.
 
@@ -126,6 +136,7 @@ def cast(context, topic, msg):
     return _get_impl().cast(cfg.CONF, context, topic, msg)
 
 
+@oboe.Context.log_method('rpc', store_backtrace=True, entry_kvs={'Method': 'fanout_cast'}, callback=get_params)
 def fanout_cast(context, topic, msg):
     """Broadcast a remote method invocation with no return.
 
@@ -147,6 +158,7 @@ def fanout_cast(context, topic, msg):
     return _get_impl().fanout_cast(cfg.CONF, context, topic, msg)
 
 
+@oboe.Context.log_method('rpc', store_backtrace=True, entry_kvs={'Method': 'multicall'}, callback=get_params)
 def multicall(context, topic, msg, timeout=None):
     """Invoke a remote method and get back an iterator.
 
@@ -177,6 +189,7 @@ def multicall(context, topic, msg, timeout=None):
     return _get_impl().multicall(cfg.CONF, context, topic, msg, timeout)
 
 
+@oboe.Context.log_method('rpc', store_backtrace=True, entry_kvs={'Method': 'notify'}, callback=get_params)
 def notify(context, topic, msg):
     """Send notification event.
 
